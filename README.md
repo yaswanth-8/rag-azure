@@ -12,7 +12,6 @@ kill -9 <pID> - to kill the running process
 
 run azure_credentials_check to check if creds are correct
 run azure_openai_check to check if openAI is configured
-run azure_search_management to check if azure search is configured
 
 
 --- 
