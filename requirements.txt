@@ -1,0 +1,10 @@
+langchain
+azure-search-documents
+azure-identity
+python-dotenv
+pypdf
+openai
+langchain-community
+uvicorn
+fastapi
+langchain-openai

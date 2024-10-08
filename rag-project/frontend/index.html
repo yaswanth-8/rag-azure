@@ -1,0 +1,56 @@
+# frontend/index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RAG Q&A System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #question-form {
+            margin-bottom: 20px;
+        }
+        #answer {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>RAG Q&A System</h1>
+    <form id="question-form">
+        <textarea id="question" rows="4" cols="50" placeholder="Enter your question..."></textarea>
+        <br>
+        <button type="submit">Ask</button>
+    </form>
+    <div id="answer"></div>
+
+    <script>
+        document.getElementById('question-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const question = document.getElementById('question').value;
+            const answerDiv = document.getElementById('answer');
+            
+            try {
+                const response = await fetch('http://localhost:8000/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: question }),
+                });
+                
+                const data = await response.json();
+                answerDiv.innerHTML = `<strong>Answer:</strong><br>${data.answer}`;
+            } catch (error) {
+                answerDiv.innerHTML = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
