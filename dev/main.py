@@ -5,9 +5,18 @@ from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
 from openai import AzureOpenAI
+from langchain_community.document_loaders import PyPDFLoader
 
 # Load environment variables
 load_dotenv()
+
+import base64
+
+def generate_base64_key(filename: str) -> str:
+    """Generate a valid Base64-encoded document key."""
+    encoded_bytes = base64.urlsafe_b64encode(filename.encode("utf-8"))
+    return encoded_bytes.decode("utf-8").rstrip("=")  # Remove padding '=' for Azure compatibility
+
 
 class AzureRAGApplication:
     def __init__(self):
@@ -48,9 +57,8 @@ class AzureRAGApplication:
 
     def search_documents(self, query_vector: List[float], k: int = 3) -> List[dict]:
         """Search for similar documents using vector search in Azure AI Search."""
-        
         vector_query = VectorizedQuery(
-            kind="vector",  # Specify the kind to ensure correct handling
+            kind="vector", 
             vector=query_vector,
             k_nearest_neighbors=k,
             fields="content_vector"
@@ -64,6 +72,27 @@ class AzureRAGApplication:
         )
         
         return [{"content": doc["content"], "metadata": doc["metadata"]} for doc in results]
+
+    def upload_document_to_index(self, doc_id: str, content: str, embedding: List[float], metadata: dict = None):
+        """Upload the embedded content to the Azure Search index."""
+        print("entered uploading.....")
+        if metadata is None:
+            metadata = {}
+
+        print("metadata:", metadata)
+
+        document = {
+            "id": doc_id,
+            "content": content,
+            "content_vector": embedding,  # Upload the embedding vector
+            "metadata": metadata
+        }
+
+        print("document:", document)
+
+        self.search_client.upload_documents(documents=[document])
+        print(f"Document {doc_id} uploaded successfully.")
+
 
     def generate_response(self, question: str, context: str) -> str:
         """Generate a response using Azure OpenAI chat completion."""
@@ -83,18 +112,9 @@ class AzureRAGApplication:
 
     def process_query(self, query: str) -> dict:
         """Process a query through the complete RAG pipeline."""
-        # Generate embeddings for the query
         query_embedding = self.get_embeddings(query)
-
-        print("Query Embedding:", query_embedding)
-        
-        # Search for relevant documents
         search_results = self.search_documents(query_embedding)
-        
-        # Combine all relevant context
         context = "\n\n".join([doc["content"] for doc in search_results])
-        
-        # Generate the final response
         response = self.generate_response(query, context)
         
         return {
@@ -103,31 +123,49 @@ class AzureRAGApplication:
             "source_documents": search_results
         }
 
-# Example usage
+def extract_pdf_content(pdf_path: str) -> str:
+    """Extract content from a PDF file using PyPDFLoader."""
+    loader = PyPDFLoader(pdf_path)
+    documents = loader.load()
+    
+    # Combine the content of all pages into one string
+    pdf_content = "\n".join([doc.page_content for doc in documents])
+    return pdf_content
+
 def main():
-    # Required environment variables
-    """
-    AZURE_OPENAI_API_KEY=your_openai_api_key
-    AZURE_OPENAI_API_VERSION=2024-02-15-preview
-    AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-    AZURE_OPENAI_EMBEDDING_DEPLOYMENT=your-embedding-deployment
-    AZURE_OPENAI_CHAT_DEPLOYMENT=your-chat-deployment
-    AZURE_SEARCH_ENDPOINT=https://your-search-service.search.windows.net
-    AZURE_SEARCH_API_KEY=your_search_api_key
-    AZURE_SEARCH_INDEX_NAME=your_index_name
-    """
-    
+    # Initialize the RAG app
     rag_app = AzureRAGApplication()
-    
-    # Example query
-    result = rag_app.process_query("What are the key features of Azure AI Search?")
-    
+
+    # Path to the PDF file
+    # pdf_path = "./pdfs/CR7.pdf"
+
+    # Extract content from the PDF
+    # pdf_content = extract_pdf_content(pdf_path)
+    # print("Extracted PDF Content:", pdf_content[:200], "...")
+
+    # Generate a valid document key
+    # doc_id = generate_base64_key(os.path.basename(pdf_path))
+    # print("Base64 Document ID:", doc_id)
+
+    # Embed the PDF content using the embedding model
+    # pdf_embedding = rag_app.get_embeddings(pdf_content)
+    # print("PDF Embedding:", pdf_embedding[:5], "...")  # Print part of the embedding to verify
+
+    # Upload the embedded content to Azure Search
+    # rag_app.upload_document_to_index(doc_id, pdf_content, pdf_embedding, metadata=f"source: ${pdf_path}")
+
+    # Ask a question about the PDF content
+    query = "What is the main topic of the document?"
+    result = rag_app.process_query(query)
+
+    # Display the results
     print("Query:", result["query"])
     print("\nResponse:", result["response"])
     print("\nSource Documents:")
     for doc in result["source_documents"]:
         print(f"\n- Content: {doc['content'][:200]}...")
         print(f"  Metadata: {doc['metadata']}")
+
 
 if __name__ == "__main__":
     main()
