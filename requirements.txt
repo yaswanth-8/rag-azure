@@ -8,3 +8,4 @@ langchain-community
 uvicorn
 fastapi
 langchain-openai
+azure-ai-contentsafety
