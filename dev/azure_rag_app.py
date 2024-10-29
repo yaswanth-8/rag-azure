@@ -5,9 +5,8 @@ from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
 from openai import AzureOpenAI
-from content_safety_filter import ContentSafetyFilter  # Import ContentSafetyFilter
+from content_safety_filter import ContentSafetyFilter  
 
-# Load environment variables
 load_dotenv()
 
 class AzureRAGApplication:
@@ -129,7 +128,6 @@ class AzureRAGApplication:
         context = "\n\n".join([doc["content"] for doc in search_results])
         response = self.generate_response(query, context)
 
-        # Final safety check on generated response
         response_safe, response_reason = self.content_filter.is_safe_content(response)
         if not response_safe:
             return {
